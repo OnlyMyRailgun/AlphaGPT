@@ -10,7 +10,8 @@ class BirdeyeProvider(DataProvider):
         self.base_url = "https://public-api.birdeye.so"
         self.headers = {
             "X-API-KEY": Config.BIRDEYE_API_KEY,
-            "accept": "application/json"
+            "accept": "application/json",
+            "x-chain": "solana"
         }
         self.semaphore = asyncio.Semaphore(Config.CONCURRENCY)
         
@@ -19,8 +20,8 @@ class BirdeyeProvider(DataProvider):
         params = {
             "sort_by": "rank",
             "sort_type": "asc",
-            "offset": "0",
-            "limit": str(limit)
+            "offset": 0,
+            "limit": min(limit, 20)
         }
         
         async with aiohttp.ClientSession(headers=self.headers) as session:
@@ -84,8 +85,8 @@ class BirdeyeProvider(DataProvider):
                             ))
                         return formatted
                     elif resp.status == 429:
-                        logger.warning(f"Birdeye 429 for {address}, retrying...")
-                        await asyncio.sleep(2)
+                        logger.warning(f"Birdeye 429 for {address}, retrying in 5s...")
+                        await asyncio.sleep(5)
                         return await self.get_token_history(session, address, days)
                     else:
                         return []
