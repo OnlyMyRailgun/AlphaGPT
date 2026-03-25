@@ -279,48 +279,40 @@ class DeepQuantMiner:
             return torch.tensor([], device=DEVICE)
 
         split = self.engine.split_idx
-        target = self.engine.target_oto_ret[:split]
-        rewards = torch.zeros(factors.shape[0], device=DEVICE)
+        work = factors[:, :split]
+        if work.shape[1] < 10:
+            return torch.full((work.shape[0],), -2.0, device=DEVICE)
+        target = self.engine.target_oto_ret[:split].unsqueeze(0)
 
-        for i in range(factors.shape[0]):
-            factor = factors[i, :split]
-            if torch.isnan(factor).all() or (factor == 0).all() or factor.numel() == 0:
-                rewards[i] = -2.0
-                continue
+        invalid_mask = torch.isnan(work).all(dim=1) | (work == 0).all(dim=1)
+        sig = torch.tanh(work)
+        pos = torch.sign(sig)
 
-            sig = torch.tanh(factor)
-            pos = torch.sign(sig)
-            turnover = torch.abs(pos - torch.roll(pos, 1))
-            if turnover.numel() > 0:
-                turnover[0] = 0.0
-            else:
-                rewards[i] = -2.0
-                continue
+        turnover = torch.abs(pos - torch.roll(pos, 1, dims=1))
+        turnover[:, 0] = 0.0
+        pnl = pos * target - turnover * COST_RATE
 
-            pnl = pos * target - turnover * COST_RATE
-            if pnl.numel() < 10:
-                rewards[i] = -2.0
-                continue
+        mu = pnl.mean(dim=1)
+        std = pnl.std(dim=1) + 1e-6
 
-            mu = pnl.mean()
-            std = pnl.std() + 1e-6
-            downside_returns = pnl[pnl < 0]
-            if downside_returns.numel() > 5:
-                down_std = downside_returns.std() + 1e-6
-                sortino = mu / down_std * 15.87
-            else:
-                sortino = mu / std * 15.87
+        negative_mask = pnl < 0
+        neg_counts = negative_mask.sum(dim=1)
+        downside_sum = torch.where(negative_mask, pnl, torch.zeros_like(pnl)).sum(dim=1)
+        downside_mean = downside_sum / neg_counts.clamp_min(1)
+        downside_sq = torch.where(negative_mask, (pnl - downside_mean.unsqueeze(1)) ** 2, torch.zeros_like(pnl))
+        down_var = downside_sq.sum(dim=1) / neg_counts.clamp_min(1)
+        down_std = torch.sqrt(down_var) + 1e-6
 
-            if mu < 0:
-                sortino = -2.0
-            if turnover.mean() > 0.5:
-                sortino -= 1.0
-            if (pos == 0).all():
-                sortino = -2.0
+        sortino = mu / std * 15.87
+        enough_downside = neg_counts > 5
+        sortino = torch.where(enough_downside, mu / down_std * 15.87, sortino)
 
-            rewards[i] = sortino
+        sortino = torch.where(mu < 0, torch.full_like(sortino, -2.0), sortino)
+        sortino = torch.where(turnover.mean(dim=1) > 0.5, sortino - 1.0, sortino)
+        sortino = torch.where((pos == 0).all(dim=1), torch.full_like(sortino, -2.0), sortino)
+        sortino = torch.where(invalid_mask, torch.full_like(sortino, -2.0), sortino)
 
-        return torch.clamp(rewards, -3, 5)
+        return torch.clamp(sortino, -3, 5)
 
     def train(self):
         print(f"🚀 Training yfinance JP experiment... MAX_LEN={MAX_SEQ_LEN}")
