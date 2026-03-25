@@ -375,6 +375,27 @@ class DeepQuantMiner:
             self.opt.step()
             pbar.set_postfix({"Valid": f"{len(valid_idx)/bsz:.1%}", "BestSortino": f"{self.best_sharpe:.2f}"})
 
+    def decode(self, tokens=None):
+        if tokens is None:
+            tokens = self.best_formula_tokens
+        if tokens is None:
+            return "N/A"
+        stream = list(tokens)
+
+        def _parse():
+            if not stream:
+                return ""
+            token = stream.pop(0)
+            if token < len(FEATURES):
+                return FEATURES[token]
+            args = [_parse() for _ in range(OP_ARITY_MAP[token])]
+            return f"{VOCAB[token]}({','.join(args)})"
+
+        try:
+            return _parse()
+        except Exception:
+            return "Invalid"
+
 
 def final_reality_check(miner, engine):
     print("\n" + "=" * 60)
@@ -383,6 +404,10 @@ def final_reality_check(miner, engine):
 
     if miner.best_formula_tokens is None:
         return
+
+    formula_str = miner.decode()
+    print(f"Formula Tokens : {miner.best_formula_tokens}")
+    print(f"Formula        : {formula_str}")
 
     factor_all = miner.solve_one(miner.best_formula_tokens)
     if factor_all is None:
