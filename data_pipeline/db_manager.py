@@ -39,8 +39,8 @@ class DBManager:
                     volume DOUBLE PRECISION,
                     liquidity DOUBLE PRECISION, 
                     fdv DOUBLE PRECISION,
-                    source TEXT,
-                    PRIMARY KEY (time, address)
+                    source TEXT NOT NULL,
+                    PRIMARY KEY (time, address, source)
                 );
             """)
             
@@ -51,6 +51,12 @@ class DBManager:
                 logger.warning("TimescaleDB extension not found, using standard Postgres.")
 
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_ohlcv_address ON ohlcv (address);")
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_ohlcv_source_address_time ON ohlcv (source, address, time);"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_ohlcv_source_time ON ohlcv (source, time);"
+            )
 
     async def upsert_tokens(self, tokens):
         if not tokens: return

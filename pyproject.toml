@@ -20,4 +20,5 @@ dependencies = [
     "streamlit>=1.28.0",
     "torch>=2.0.0",
     "tqdm>=4.66.0",
+    "pytest>=8.3.0",
 ]

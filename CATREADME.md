@@ -3,7 +3,7 @@ AlphaGPT 仓库速读
 这是一套“因子挖掘 + 实盘执行”的加密量化系统，核心思路是：用模型自动生成可解释的因子公式，通过回测打分筛选，再把高分公式用于实时扫描与交易执行。整体偏向 Solana meme 生态的数据与交易链路。
 
 代码组织（按功能划分）
-- data_pipeline/：数据管线。拉取 Birdeye/DexScreener 的代币与 OHLCV，写入 Postgres/Timescale。
+- data_pipeline/：数据管线。通过 `DATA_PROVIDER=birdeye|dexscreener` 选择数据源，拉取代币与 OHLCV，写入 Postgres/Timescale。
 - model_core/：策略挖掘。把原始行情转成特征（factors），定义算子语言（ops），用 Transformer 生成“公式 token 序列”，再用回测评分训练。
 - strategy_manager/：实盘策略执行。周期性加载数据、生成信号、风控、下单与持仓管理。
 - execution/：交易执行层。封装 Solana RPC + Jupiter 聚合器的报价/下单/签名。
@@ -58,7 +58,9 @@ AlphaGPT 仓库速读
   - MAX3：当前/滞后1/滞后2 最大值
 
 现状与依赖（实话版）
-- 需要外部服务：Postgres、Birdeye API、Solana RPC、Jupiter。
+- 需要外部服务：Postgres、Solana RPC、Jupiter，以及二选一的数据源（Birdeye 或 DexScreener）。
+- 当 `DATA_PROVIDER=birdeye` 时，需要 `BIRDEYE_API_KEY`。
+- 当 `DATA_PROVIDER=dexscreener` 时，可直接使用公开接口。
 - 缺少依赖清单与 .env 模板；实盘需要私钥配置。
 - best_meme_strategy.json 需要先训练生成，仓库默认不带。
 

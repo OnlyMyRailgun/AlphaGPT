@@ -9,8 +9,14 @@ from .providers.dexscreener import DexScreenerProvider
 class DataManager:
     def __init__(self):
         self.db = DBManager()
-        self.birdeye = BirdeyeProvider()
-        self.dexscreener = DexScreenerProvider()
+        self.provider = self._build_provider()
+
+    def _build_provider(self):
+        if Config.DATA_PROVIDER == "birdeye":
+            return BirdeyeProvider()
+        if Config.DATA_PROVIDER == "dexscreener":
+            return DexScreenerProvider()
+        raise ValueError(f"Unsupported data provider: {Config.DATA_PROVIDER}")
         
     async def initialize(self):
         await self.db.connect()
@@ -20,9 +26,9 @@ class DataManager:
         await self.db.close()
 
     async def pipeline_sync_daily(self):
-        logger.info("Step 1: Discovering trending tokens...")
-        limit = 500 if Config.BIRDEYE_IS_PAID else 100
-        candidates = await self.birdeye.get_trending_tokens(limit=limit)
+        logger.info(f"Step 1: Discovering trending tokens via {self.provider.provider_name}...")
+        limit = 500 if self.provider.provider_name == "birdeye" and Config.BIRDEYE_IS_PAID else 100
+        candidates = await self.provider.get_trending_tokens(limit=limit)
         
         logger.info(f"Raw candidates found: {len(candidates)}")
 
@@ -48,10 +54,10 @@ class DataManager:
 
         logger.info(f"Step 4: Fetching OHLCV for {len(selected_tokens)} tokens...")
         
-        async with aiohttp.ClientSession(headers=self.birdeye.headers) as session:
+        async with aiohttp.ClientSession(headers=self.provider.session_headers) as session:
             tasks = []
             for t in selected_tokens:
-                tasks.append(self.birdeye.get_token_history(session, t['address']))
+                tasks.append(self.provider.get_token_history(session, t['address'], Config.HISTORY_DAYS))
             
             batch_size = 20
             total_candles = 0

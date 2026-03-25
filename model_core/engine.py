@@ -10,7 +10,7 @@ from .vm import StackVM
 from .backtest import MemeBacktest
 
 class AlphaEngine:
-    def __init__(self, use_lord_regularization=True, lord_decay_rate=1e-3, lord_num_iterations=5):
+    def __init__(self, use_lord_regularization=True, lord_decay_rate=1e-3, lord_num_iterations=5, data_source=None):
         """
         Initialize AlphaGPT training engine.
         
@@ -20,7 +20,7 @@ class AlphaEngine:
             lord_num_iterations: Number of Newton-Schulz iterations per step
         """
         self.loader = CryptoDataLoader()
-        self.loader.load_data()
+        self.loader.load_data(source=data_source)
         
         self.model = AlphaGPT().to(ModelConfig.DEVICE)
         
@@ -153,5 +153,5 @@ class AlphaEngine:
 
 
 if __name__ == "__main__":
-    eng = AlphaEngine(use_lord_regularization=True)
+    eng = AlphaEngine(use_lord_regularization=True, data_source="birdeye")
     eng.train()

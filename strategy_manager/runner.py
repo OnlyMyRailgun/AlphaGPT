@@ -23,6 +23,7 @@ class StrategyRunner:
         self.vm = StackVM()
         
         self.loader = CryptoDataLoader()
+        self.data_source = StrategyConfig.DATA_SOURCE
         self.token_map = {} # {address: tensor_index} 用于快速查找特征
         self.last_scan_time = 0
         
@@ -53,7 +54,7 @@ class StrategyRunner:
                     await self.data_mgr.pipeline_sync_daily()
                     self.last_scan_time = time.time()
 
-                self.loader.load_data(limit_tokens=300)
+                self.loader.load_data(limit_tokens=300, source=self.data_source)
                 await self._build_token_mapping()
 
                 await self.monitor_positions()
@@ -76,6 +77,7 @@ class StrategyRunner:
         query = f"""
         SELECT address, count(*) as cnt 
         FROM ohlcv 
+        WHERE source = '{self.data_source}'
         GROUP BY address 
         ORDER BY cnt DESC 
         LIMIT 300

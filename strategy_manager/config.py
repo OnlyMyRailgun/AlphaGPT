@@ -1,4 +1,8 @@
+import os
+
+
 class StrategyConfig:
+    DATA_SOURCE = os.getenv("STRATEGY_DATA_SOURCE", "birdeye")
     MAX_OPEN_POSITIONS = 3
     ENTRY_AMOUNT_SOL = 2.0
     STOP_LOSS_PCT = -0.05

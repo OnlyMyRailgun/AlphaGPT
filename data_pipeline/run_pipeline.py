@@ -4,9 +4,13 @@ from .data_manager import DataManager
 from .config import Config
 
 async def main():
-    if not Config.BIRDEYE_API_KEY:
-        logger.error("BIRDEYE_API_KEY is missing in .env")
+    try:
+        Config.validate_runtime()
+    except ValueError as exc:
+        logger.error(str(exc))
         return
+
+    logger.info(f"Starting pipeline with DATA_PROVIDER={Config.DATA_PROVIDER}")
 
     manager = DataManager()
     

@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 
-class DataProvider(ABC):    
+class DataProvider(ABC):
+    provider_name: str = ""
+    session_headers: dict[str, str]
+
     @abstractmethod
     async def get_trending_tokens(self, limit: int):
         pass
