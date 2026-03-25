@@ -9,8 +9,12 @@ import os
 import math
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import os
+from dotenv import load_dotenv
 
-TS_TOKEN = '20af39742f461b1edc79ff0aec09c8940265babe0c6733e7bf358078'
+load_dotenv()
+
+TS_TOKEN = os.getenv("TUSHARE_TOKEN", "").strip()
 INDEX_CODE = '511260.SH'
 START_DATE = '20150101' # 训练数据开始
 END_DATE = '20240101' # 训练数据结束
@@ -102,6 +106,8 @@ class AlphaGPT(nn.Module):
 
 class DataEngine:
     def __init__(self):
+        if not TS_TOKEN:
+            raise ValueError("TUSHARE_TOKEN is missing. Add it to your environment or .env file.")
         self.pro = ts.pro_api(TS_TOKEN)
     def load(self):
         if os.path.exists(DATA_CACHE_PATH):
