@@ -1,5 +1,8 @@
 import torch
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class ModelConfig:
     if torch.cuda.is_available():

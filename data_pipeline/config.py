@@ -31,7 +31,7 @@ class Config:
     BIRDEYE_RPS = float(os.getenv("BIRDEYE_RPS", "1"))
     BIRDEYE_RETRY_LIMIT = int(os.getenv("BIRDEYE_RETRY_LIMIT", "3"))
     CONCURRENCY = 1
-    HISTORY_DAYS = 7
+    HISTORY_DAYS = int(os.getenv("HISTORY_DAYS", "30"))
     DEXSCREENER_API_BASE = os.getenv("DEXSCREENER_API_BASE", "https://api.dexscreener.com")
     DEXSCREENER_CHART_API_URL = os.getenv(
         "DEXSCREENER_CHART_API_URL",

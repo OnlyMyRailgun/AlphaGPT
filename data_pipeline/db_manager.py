@@ -73,14 +73,38 @@ class DBManager:
         if not records: return
         async with self.pool.acquire() as conn:
             try:
-                await conn.copy_records_to_table(
-                    'ohlcv',
-                    records=records,
-                    columns=['time', 'address', 'open', 'high', 'low', 'close', 
-                             'volume', 'liquidity', 'fdv', 'source'],
-                    timeout=60
-                )
-            except asyncpg.UniqueViolationError:
-                pass # 忽略重复
+                async with conn.transaction():
+                    await conn.execute("""
+                        CREATE TEMP TABLE ohlcv_staging (
+                            time TIMESTAMP NOT NULL,
+                            address TEXT NOT NULL,
+                            open DOUBLE PRECISION,
+                            high DOUBLE PRECISION,
+                            low DOUBLE PRECISION,
+                            close DOUBLE PRECISION,
+                            volume DOUBLE PRECISION,
+                            liquidity DOUBLE PRECISION,
+                            fdv DOUBLE PRECISION,
+                            source TEXT NOT NULL
+                        ) ON COMMIT DROP;
+                    """)
+                    await conn.copy_records_to_table(
+                        'ohlcv_staging',
+                        records=records,
+                        columns=['time', 'address', 'open', 'high', 'low', 'close',
+                                 'volume', 'liquidity', 'fdv', 'source'],
+                        timeout=60
+                    )
+                    await conn.execute("""
+                        INSERT INTO ohlcv (
+                            time, address, open, high, low, close,
+                            volume, liquidity, fdv, source
+                        )
+                        SELECT
+                            time, address, open, high, low, close,
+                            volume, liquidity, fdv, source
+                        FROM ohlcv_staging
+                        ON CONFLICT (time, address, source) DO NOTHING;
+                    """)
             except Exception as e:
                 logger.error(f"Batch insert error: {e}")
